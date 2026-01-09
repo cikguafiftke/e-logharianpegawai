@@ -3,560 +3,391 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem e-Log Harian USTP | PPD Alor Gajah</title>
+    <title>Sistem Rekod USTP PPD Alor Gajah</title>
     
-    <!-- Tailwind CSS (UI) -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome (Icons) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- SheetJS (Excel Export) -->
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
-    <!-- Supabase JS -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
+    
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
-        
-        /* Print Styles */
-        @media print {
-            .no-print { display: none !important; }
-            .print-only { display: block !important; }
-            body { background-color: white; }
-            .card { box-shadow: none; border: 1px solid #ddd; }
-            table { font-size: 12px; width: 100%; }
-            th, td { padding: 4px; border: 1px solid #000; }
-        }
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .card { border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: none; }
+        .header-bg { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; padding: 20px; border-radius: 0 0 20px 20px; margin-bottom: 20px; }
+        .btn-primary { background-color: #1e3c72; border: none; }
+        .login-container { max-width: 400px; margin: 100px auto; }
+        #loading { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 9999; }
+        .table-responsive { font-size: 0.9rem; }
     </style>
 </head>
-<body class="text-gray-800">
+<body>
 
-    <!-- LOGIN OVERLAY -->
-    <div id="loginSection" class="fixed inset-0 bg-blue-900 z-50 flex items-center justify-center">
-        <div class="bg-white p-8 rounded-lg shadow-2xl w-96 text-center">
-            <div class="mb-4">
-                <i class="fas fa-user-shield text-5xl text-blue-600"></i>
+    <div id="loading" class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+
+    <div id="login-page" class="container login-container">
+        <div class="card p-4">
+            <h4 class="text-center mb-4">Log Masuk USTP</h4>
+            <div class="mb-3">
+                <label>ID Pengguna</label>
+                <input type="text" id="login-id" class="form-control" placeholder="Masukkan ID">
             </div>
-            <h2 class="text-2xl font-bold mb-2">Log Masuk USTP</h2>
-            <p class="text-gray-500 text-sm mb-6">Sila masukkan kelayakan anda.</p>
-            
-            <input type="email" id="emailInput" placeholder="Emel Pengguna" class="w-full p-3 border rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <input type="password" id="passwordInput" placeholder="Kata Laluan" class="w-full p-3 border rounded mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500">
-            
-            <button onclick="handleLogin()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded transition">
-                Masuk Sistem
-            </button>
-            <p id="loginError" class="text-red-500 text-sm mt-3 hidden">Kelayakan tidak sah!</p>
+            <div class="mb-3">
+                <label>Kata Laluan</label>
+                <input type="password" id="login-pass" class="form-control" placeholder="Masukkan Kata Laluan">
+            </div>
+            <button onclick="handleLogin()" class="btn btn-primary w-100">Masuk Sistem</button>
+            <p id="login-error" class="text-danger mt-2 text-center" style="display:none;">ID atau Kata Laluan Salah!</p>
         </div>
     </div>
 
-    <!-- MAIN DASHBOARD -->
-    <div id="appSection" class="hidden min-h-screen flex flex-col">
+    <div id="dashboard-page" style="display: none;">
         
-        <!-- Navbar -->
-        <nav class="bg-blue-800 text-white shadow-lg no-print">
-            <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-                <div class="flex items-center space-x-3">
-                    <i class="fas fa-laptop-code text-2xl"></i>
-                    <div>
-                        <h1 class="text-xl font-bold">e-Log Harian USTP</h1>
-                        <p class="text-xs text-blue-200">PPD Alor Gajah - Penolong Pegawai</p>
+        <div class="header-bg text-center">
+            <h2><i class="fas fa-calendar-check me-2"></i>Rekod Aktiviti Harian USTP</h2>
+            <p>PPD Alor Gajah | Dokumentasi Profesional</p>
+            <button onclick="logout()" class="btn btn-sm btn-danger mt-2"><i class="fas fa-sign-out-alt"></i> Log Keluar</button>
+        </div>
+
+        <div class="container mb-5">
+            <div class="card p-4 mb-4">
+                <h5 class="mb-3 text-primary"><i class="fas fa-edit"></i> Masukkan / Kemaskini Data</h5>
+                <input type="hidden" id="data-id"> <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Tarikh</label>
+                        <input type="date" id="input-tarikh" class="form-control">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Masa</label>
+                        <input type="time" id="input-masa" class="form-control">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Jenis Aktiviti</label>
+                        <select id="input-aktiviti" class="form-select">
+                            <option value="Bimbingan">Bimbingan</option>
+                            <option value="Mesyuarat">Mesyuarat</option>
+                            <option value="Bengkel/Kursus">Bengkel/Kursus</option>
+                            <option value="Aduan/Siasatan">Aduan/Siasatan</option>
+                            <option value="Pejabat">Kerja Pejabat</option>
+                            <option value="Lain-lain">Lain-lain</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Jenis Bimbingan</label>
+                        <select id="input-bimbingan" class="form-select">
+                            <option value="-">- Tiada -</option>
+                            <option value="Pedagogi">Pedagogi</option>
+                            <option value="ICT">ICT / Digital</option>
+                            <option value="Pengurusan">Pengurusan</option>
+                            <option value="Kaunseling">Kaunseling</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label">Lokasi (Manual)</label>
+                        <input type="text" id="input-lokasi" class="form-control" placeholder="Cth: SK Alor Gajah 1">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Bil. Guru</label>
+                        <input type="number" id="input-bil-guru" class="form-control" value="0">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Catatan</label>
+                        <input type="text" id="input-catatan" class="form-control" placeholder="Ringkasan aktiviti...">
+                    </div>
+                    
+                    <div class="col-md-12">
+                        <label class="form-label">Isu / Tindakan Susulan</label>
+                        <textarea id="input-isu" class="form-control" rows="2" placeholder="Isu yang timbul atau tindakan yang perlu diambil..."></textarea>
                     </div>
                 </div>
-                <div class="flex items-center space-x-4">
-                    <span class="text-sm hidden md:inline">Selamat Datang, <b>En. Muhammad Afif</b></span>
-                    <button onclick="handleLogout()" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm">
-                        <i class="fas fa-sign-out-alt"></i> Keluar
-                    </button>
+
+                <div class="mt-4 text-end">
+                    <button onclick="resetForm()" class="btn btn-secondary me-2">Batal / Reset</button>
+                    <button onclick="saveData()" class="btn btn-success"><i class="fas fa-save"></i> Simpan Rekod</button>
                 </div>
             </div>
-        </nav>
 
-        <!-- Content -->
-        <main class="container mx-auto px-4 py-6 flex-grow">
-            
-            <!-- Input Form Card -->
-            <div class="bg-white rounded-lg shadow-md p-6 mb-6 no-print border-l-4 border-blue-600">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-lg font-bold text-gray-700"><i class="fas fa-edit mr-2"></i>Rekod Aktiviti Baharu</h2>
-                    <button type="button" onclick="resetForm()" class="text-sm text-gray-500 hover:text-blue-600 underline">Reset Borang</button>
-                </div>
-
-                <form id="logForm" onsubmit="saveLog(event)">
-                    <input type="hidden" id="logId"> <!-- Hidden ID for Update -->
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                        <!-- Row 1 -->
-                        <div>
-                            <label class="block text-sm font-semibold mb-1">Tarikh</label>
-                            <input type="date" id="tarikh" required class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-400">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-semibold mb-1">Jenis Aktiviti</label>
-                            <select id="jenisAktiviti" required class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-400">
-                                <option value="">Pilih...</option>
-                                <option value="Bimbingan">Bimbingan Sekolah</option>
-                                <option value="Khidmat Bantu">Khidmat Bantu</option>
-                                <option value="Bengkel">Bengkel / Kursus</option>
-                                <option value="Mesyuarat">Mesyuarat</option>
-                                <option value="Tugas Rasmi">Tugas Rasmi Luar</option>
-                                <option value="Lain-lain">Lain-lain</option>
-                            </select>
-                        </div>
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-semibold mb-1">Butiran / Bimbingan</label>
-                            <input type="text" id="bimbingan" placeholder="Nama Sekolah / Tajuk Program" required class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-400">
-                        </div>
-
-                        <!-- Row 2 -->
-                        <div>
-                            <label class="block text-sm font-semibold mb-1">Masa Mula</label>
-                            <input type="time" id="masaMula" required class="w-full p-2 border rounded">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-semibold mb-1">Masa Tamat</label>
-                            <input type="time" id="masaTamat" required class="w-full p-2 border rounded">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-semibold mb-1">Lokasi</label>
-                            <input type="text" id="lokasi" placeholder="Contoh: Bilik Mesyuarat / SK..." class="w-full p-2 border rounded">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-semibold mb-1">Bil. Guru Dibimbing</label>
-                            <input type="number" id="bilGuru" min="0" value="0" class="w-full p-2 border rounded">
-                        </div>
-
-                        <!-- Row 3 -->
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-semibold mb-1">Catatan Aktiviti</label>
-                            <textarea id="catatan" rows="2" class="w-full p-2 border rounded" placeholder="Ringkasan aktiviti..."></textarea>
-                        </div>
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-semibold mb-1">Isu / Masalah</label>
-                            <textarea id="isu" rows="2" class="w-full p-2 border rounded text-red-600" placeholder="Isu yang timbul (jika ada)..."></textarea>
-                        </div>
+            <div class="card p-3 mb-3 bg-light">
+                <div class="row align-items-end">
+                    <div class="col-md-3">
+                        <label>Pilih Tahun</label>
+                        <select id="filter-tahun" class="form-select" onchange="fetchData()">
+                            <option value="2025">2025</option>
+                            <option value="2026" selected>2026</option>
+                        </select>
                     </div>
-
-                    <div class="flex justify-end gap-2">
-                        <button type="submit" id="submitBtn" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 shadow flex items-center">
-                            <i class="fas fa-save mr-2"></i> Simpan Rekod
-                        </button>
-                    </div>
-                </form>
-            </div>
-
-            <!-- Data Display Section -->
-            <div class="bg-white rounded-lg shadow-md p-6">
-                
-                <!-- Filters & Actions Header -->
-                <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 no-print">
-                    <div class="flex gap-2 items-center w-full md:w-auto">
-                        <h2 class="text-xl font-bold">Senarai Log</h2>
-                        <!-- Filter: Month/Year -->
-                        <select id="filterMonth" onchange="fetchData()" class="border p-2 rounded text-sm bg-gray-50">
+                    <div class="col-md-3">
+                        <label>Pilih Bulan</label>
+                        <select id="filter-bulan" class="form-select" onchange="fetchData()">
                             <option value="">Semua Bulan</option>
-                            <option value="01">Januari</option>
-                            <option value="02">Februari</option>
-                            <option value="03">Mac</option>
-                            <option value="04">April</option>
-                            <option value="05">Mei</option>
-                            <option value="06">Jun</option>
-                            <option value="07">Julai</option>
-                            <option value="08">Ogos</option>
-                            <option value="09">September</option>
+                            <option value="1">Januari</option>
+                            <option value="2">Februari</option>
+                            <option value="3">Mac</option>
+                            <option value="4">April</option>
+                            <option value="5">Mei</option>
+                            <option value="6">Jun</option>
+                            <option value="7">Julai</option>
+                            <option value="8">Ogos</option>
+                            <option value="9">September</option>
                             <option value="10">Oktober</option>
                             <option value="11">November</option>
                             <option value="12">Disember</option>
                         </select>
-                        <select id="filterYear" onchange="fetchData()" class="border p-2 rounded text-sm bg-gray-50">
-                            <!-- Options generated by JS now -->
-                        </select>
                     </div>
-
-                    <div class="flex gap-2">
-                        <button onclick="exportToExcel()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm flex items-center">
-                            <i class="fas fa-file-excel mr-2"></i> Excel
-                        </button>
-                        <button onclick="window.print()" class="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded text-sm flex items-center">
-                            <i class="fas fa-print mr-2"></i> PDF/Cetak
-                        </button>
+                    <div class="col-md-6 text-end">
+                        <button onclick="exportExcel()" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i> Export Excel</button>
+                        <button onclick="exportPDF()" class="btn btn-danger btn-sm"><i class="fas fa-file-pdf"></i> Export PDF</button>
                     </div>
                 </div>
+            </div>
 
-                <!-- Print Header (Visible only when printing) -->
-                <div class="hidden print-only mb-6 text-center border-b-2 border-black pb-4">
-                    <h1 class="text-2xl font-bold uppercase">Laporan Aktiviti Harian USTP</h1>
-                    <p class="text-lg">Pejabat Pendidikan Daerah Alor Gajah</p>
-                    <p class="text-sm mt-2">Pegawai: Muhammad Afif | Tahun: <span id="printYearDisplay"></span></p>
-                </div>
-
-                <!-- Responsive Table -->
-                <div class="overflow-x-auto">
-                    <table class="min-w-full bg-white border border-gray-200 text-sm">
-                        <thead>
-                            <tr class="bg-gray-100 text-gray-700 uppercase leading-normal">
-                                <th class="py-3 px-2 text-left border">Tarikh / Masa</th>
-                                <th class="py-3 px-2 text-left border">Aktiviti / Lokasi</th>
-                                <th class="py-3 px-2 text-left border">Catatan / Isu</th>
-                                <th class="py-3 px-2 text-center border w-16">Bil. Guru</th>
-                                <th class="py-3 px-2 text-center border w-32 no-print">Tindakan</th>
+            <div class="card p-4">
+                <h5 class="mb-3">Senarai Aktiviti</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover table-bordered" id="dataTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Tarikh</th>
+                                <th>Masa</th>
+                                <th>Aktiviti</th>
+                                <th>Lokasi</th>
+                                <th>Bil. Guru</th>
+                                <th>Catatan</th>
+                                <th>Tindakan</th>
                             </tr>
                         </thead>
-                        <tbody id="tableBody" class="text-gray-600 font-light">
-                            <!-- Data will be injected here -->
-                            <tr>
-                                <td colspan="5" class="text-center py-4">Sedang memuatkan data... (Pastikan konfigurasi Supabase lengkap)</td>
-                            </tr>
-                        </tbody>
+                        <tbody id="table-body">
+                            </tbody>
                     </table>
                 </div>
             </div>
-        </main>
-
-        <footer class="bg-gray-800 text-white text-center py-4 text-xs no-print mt-8">
-            <p>&copy; 2025 Unit Sumber Teknologi Pendidikan, PPD Alor Gajah.</p>
-        </footer>
+        </div>
     </div>
 
-    <!-- JAVASCRIPT LOGIC -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+
     <script>
-        // ==========================================
-        // 1. CONFIGURATION
-        // ==========================================
+        // --- KONFIGURASI SUPABASE ---
+        const PROJECT_URL = "https://xwpgsvhtscqmgnbpuhax.supabase.co";
+        // Nota: Key ini diambil dari input anda. 
+        const PUBLIC_KEY = "sb_publishable_SFuymUfXChIua588-X1XFA_wXkyIfOS"; 
         
-        // --- AUTH CONFIG (Moved Top to prevent ReferenceError) ---
-        const AUTH_USER = 'muhammadafif@moe.gov.my';
-        const AUTH_PASS = 'Afif@ustpAG';
+        const supabase = window.supabase.createClient(PROJECT_URL, PUBLIC_KEY);
 
-        // --- SUPABASE CONFIG (SILA ISI DI SINI) ---
-        const SUPABASE_URL = 'TEPEK_URL_SUPABASE_ANDA_DISINI';
-        const SUPABASE_KEY = 'TEPEK_ANON_KEY_SUPABASE_ANDA_DISINI';
-        
-        const TABLE_NAME = 'log_aktiviti';
-
-        // Initialize Supabase Safely
-        let _supabase = null;
-        try {
-            // Check if URL is valid before initializing to prevent crash
-            if (SUPABASE_URL !== 'TEPEK_URL_SUPABASE_ANDA_DISINI' && SUPABASE_URL.startsWith('http')) {
-                const { createClient } = supabase;
-                _supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-            } else {
-                console.warn("Sistem berjalan dalam mod tanpa database kerana URL Supabase belum ditetapkan.");
-            }
-        } catch (error) {
-            console.error("Ralat Inisialisasi Supabase:", error);
-        }
-
-        // ==========================================
-        // 2. AUTHENTICATION LOGIC
-        // ==========================================
+        // --- AUTH ---
         function handleLogin() {
-            const email = document.getElementById('emailInput').value;
-            const pass = document.getElementById('passwordInput').value;
-            const err = document.getElementById('loginError');
+            const id = document.getElementById('login-id').value;
+            const pass = document.getElementById('login-pass').value;
 
-            if (email === AUTH_USER && pass === AUTH_PASS) {
-                // Success
-                document.getElementById('loginSection').classList.add('hidden');
-                document.getElementById('appSection').classList.remove('hidden');
-                
-                // Initialize Data
-                initYearDropdown(); // Initialize dropdown options first
-                setDefaultDate();   // Then set the value
-                fetchData();
+            if(id === 'afyf89' && pass === 'mfc-j415W') {
+                document.getElementById('login-page').style.display = 'none';
+                document.getElementById('dashboard-page').style.display = 'block';
+                fetchData(); // Tarik data bila berjaya login
             } else {
-                // Fail
-                err.classList.remove('hidden');
+                document.getElementById('login-error').style.display = 'block';
             }
         }
 
-        function handleLogout() {
+        function logout() {
             location.reload();
         }
 
-        // ==========================================
-        // 3. CRUD OPERATIONS
-        // ==========================================
+        // --- CRUD SUPABASE ---
         
-        // Helper to check DB connection
-        function checkDbConnection() {
-            if (!_supabase) {
-                alert("Sambungan ke Database gagal. Sila buka kod fail ini (index.html) dan masukkan URL serta KEY Supabase anda di bahagian CONFIGURATION.");
-                return false;
-            }
-            return true;
-        }
-
-        // --- CREATE / UPDATE ---
-        async function saveLog(e) {
-            e.preventDefault();
-            if (!checkDbConnection()) return;
-
-            const btn = document.getElementById('submitBtn');
-            const originalBtnText = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
-            btn.disabled = true;
-
-            const id = document.getElementById('logId').value;
-            
-            const data = {
-                tarikh: document.getElementById('tarikh').value,
-                jenis_aktiviti: document.getElementById('jenisAktiviti').value,
-                butiran_bimbingan: document.getElementById('bimbingan').value,
-                masa_mula: document.getElementById('masaMula').value,
-                masa_tamat: document.getElementById('masaTamat').value,
-                lokasi: document.getElementById('lokasi').value,
-                bilangan_guru: document.getElementById('bilGuru').value,
-                catatan: document.getElementById('catatan').value,
-                isu: document.getElementById('isu').value
-            };
-
-            let error;
-
-            if (id) {
-                // Update existing
-                const res = await _supabase.from(TABLE_NAME).update(data).eq('id', id);
-                error = res.error;
-            } else {
-                // Insert new
-                const res = await _supabase.from(TABLE_NAME).insert([data]);
-                error = res.error;
-            }
-
-            btn.innerHTML = originalBtnText;
-            btn.disabled = false;
-
-            if (error) {
-                alert('Ralat menyimpan data: ' + error.message);
-            } else {
-                resetForm();
-                await fetchData(); // Await fetch data to ensure UI updates
-                showNotification('Data berjaya disimpan!');
-            }
-        }
-
-        // --- READ ---
+        // 1. READ (Baca Data)
         async function fetchData() {
-            const month = document.getElementById('filterMonth').value;
-            const year = document.getElementById('filterYear').value;
-            
-            // Update print year
-            document.getElementById('printYearDisplay').innerText = year;
+            showLoading(true);
+            const tahun = document.getElementById('filter-tahun').value;
+            const bulan = document.getElementById('filter-bulan').value;
 
-            if (!_supabase) {
-                // If no DB, just show empty table, don't crash
-                renderTable([]); 
-                return;
+            let query = supabase
+                .from('rekod_aktiviti')
+                .select('*')
+                .eq('tahun', tahun)
+                .order('tarikh', { ascending: false })
+                .order('masa', { ascending: false });
+
+            if(bulan) {
+                query = query.eq('bulan', bulan);
             }
 
-            let query = _supabase
-                .from(TABLE_NAME)
-                .select('*')
-                .order('tarikh', { ascending: false })
-                .order('masa_mula', { ascending: false });
-
-            // Fetch all first 
             const { data, error } = await query;
 
             if (error) {
-                console.error("Ralat data:", error);
-                // alert('Ralat mengambil data dari Supabase.'); // Suppress persistent alert if network flaky
+                alert('Ralat mengambil data: ' + error.message);
+            } else {
+                renderTable(data);
+            }
+            showLoading(false);
+        }
+
+        // 2. CREATE / UPDATE (Simpan Data)
+        async function saveData() {
+            const id = document.getElementById('data-id').value;
+            const tarikh = document.getElementById('input-tarikh').value;
+            const masa = document.getElementById('input-masa').value;
+            const aktiviti = document.getElementById('input-aktiviti').value;
+            const bimbingan = document.getElementById('input-bimbingan').value;
+            const lokasi = document.getElementById('input-lokasi').value;
+            const bilGuru = document.getElementById('input-bil-guru').value;
+            const catatan = document.getElementById('input-catatan').value;
+            const isu = document.getElementById('input-isu').value;
+
+            if(!tarikh || !aktiviti) {
+                alert("Sila isi Tarikh dan Jenis Aktiviti!");
                 return;
             }
 
-            if (!data) return;
+            // Kira Tahun dan Bulan dari tarikh untuk tujuan filter
+            const dateObj = new Date(tarikh);
+            const thn = dateObj.getFullYear();
+            const bln = dateObj.getMonth() + 1; // JS bulan mula 0
 
-            // Client side filtering for Month/Year specific
-            const filteredData = data.filter(item => {
-                const d = new Date(item.tarikh);
-                const itemYear = d.getFullYear().toString();
-                const itemMonth = (d.getMonth() + 1).toString().padStart(2, '0');
-                
-                let matchYear = itemYear === year;
-                let matchMonth = month === "" ? true : itemMonth === month;
-                
-                return matchYear && matchMonth;
-            });
+            const payload = {
+                tarikh: tarikh,
+                masa: masa,
+                jenis_aktiviti: aktiviti,
+                jenis_bimbingan: bimbingan,
+                lokasi: lokasi,
+                bil_guru: bilGuru,
+                catatan: catatan,
+                isu: isu,
+                tahun: thn,
+                bulan: bln
+            };
 
-            renderTable(filteredData);
+            showLoading(true);
+            let error;
+
+            if(id) {
+                // Update
+                const res = await supabase.from('rekod_aktiviti').update(payload).eq('id', id);
+                error = res.error;
+            } else {
+                // Insert Baru
+                const res = await supabase.from('rekod_aktiviti').insert([payload]);
+                error = res.error;
+            }
+
+            showLoading(false);
+            if(error) {
+                alert("Gagal simpan: " + error.message);
+            } else {
+                alert("Berjaya disimpan!");
+                resetForm();
+                fetchData();
+            }
         }
 
-        // --- DELETE ---
-        async function deleteLog(id) {
-            if (!checkDbConnection()) return;
-            if (confirm("Adakah anda pasti mahu memadam rekod ini?")) {
-                const { error } = await _supabase.from(TABLE_NAME).delete().eq('id', id);
-                if (error) alert("Ralat memadam.");
+        // 3. DELETE (Padam)
+        async function deleteData(id) {
+            if(confirm("Adakah anda pasti mahu memadam rekod ini?")) {
+                showLoading(true);
+                const { error } = await supabase.from('rekod_aktiviti').delete().eq('id', id);
+                showLoading(false);
+                
+                if(error) alert("Gagal padam: " + error.message);
                 else fetchData();
             }
         }
 
-        // ==========================================
-        // 4. UI HELPERS & ACTIONS
-        // ==========================================
+        // --- FUNGSI UI HELPERS ---
 
         function renderTable(data) {
-            const tbody = document.getElementById('tableBody');
+            const tbody = document.getElementById('table-body');
             tbody.innerHTML = '';
 
-            if (!data || data.length === 0) {
-                const msg = _supabase ? 'Tiada rekod dijumpai untuk tempoh ini.' : 'Sila konfigurasikan Supabase URL dalam kod untuk melihat data.';
-                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-gray-500 italic">${msg}</td></tr>`;
-                return;
-            }
-
-            data.forEach(item => {
-                const row = `
-                    <tr class="border-b border-gray-200 hover:bg-gray-50 align-top">
-                        <td class="py-3 px-2 border">
-                            <div class="font-bold text-gray-800">${formatDate(item.tarikh)}</div>
-                            <div class="text-xs text-blue-600 bg-blue-50 inline-block px-1 rounded mt-1">
-                                <i class="far fa-clock"></i> ${formatTime(item.masa_mula)} - ${formatTime(item.masa_tamat)}
-                            </div>
-                        </td>
-                        <td class="py-3 px-2 border">
-                            <span class="bg-gray-200 text-gray-700 py-1 px-2 rounded text-xs font-bold mb-1 inline-block">${item.jenis_aktiviti}</span>
-                            <div class="font-semibold text-gray-800">${item.butiran_bimbingan || '-'}</div>
-                            <div class="text-xs text-gray-500 mt-1"><i class="fas fa-map-marker-alt"></i> ${item.lokasi || 'Tiada Lokasi'}</div>
-                        </td>
-                        <td class="py-3 px-2 border">
-                            <div class="text-sm whitespace-pre-wrap">${item.catatan || '-'}</div>
-                            ${item.isu ? `<div class="mt-2 text-xs text-red-600 bg-red-50 p-1 border border-red-100 rounded"><strong><i class="fas fa-exclamation-circle"></i> Isu:</strong> ${item.isu}</div>` : ''}
-                        </td>
-                        <td class="py-3 px-2 text-center border font-bold text-lg text-gray-700">
-                            ${item.bilangan_guru}
-                        </td>
-                        <td class="py-3 px-2 text-center border no-print">
-                            <div class="flex flex-col gap-1">
-                                <button onclick='editLog(${JSON.stringify(item)})' class="bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-2 rounded text-xs" title="Edit">
-                                    <i class="fas fa-edit"></i> Edit
-                                </button>
-                                <button onclick='copyLog(${JSON.stringify(item)})' class="bg-blue-500 hover:bg-blue-600 text-white py-1 px-2 rounded text-xs" title="Salin & Buat Baru">
-                                    <i class="fas fa-copy"></i> Salin
-                                </button>
-                                <button onclick="deleteLog(${item.id})" class="bg-red-500 hover:bg-red-600 text-white py-1 px-2 rounded text-xs" title="Padam">
-                                    <i class="fas fa-trash"></i> Hapus
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${formatDate(row.tarikh)}</td>
+                    <td>${row.masa ? row.masa.slice(0,5) : '-'}</td>
+                    <td>
+                        <strong>${row.jenis_aktiviti}</strong><br>
+                        <small class="text-muted">${row.jenis_bimbingan}</small>
+                    </td>
+                    <td>${row.lokasi}</td>
+                    <td>${row.bil_guru}</td>
+                    <td>
+                        ${row.catatan}<br>
+                        ${row.isu ? '<span class="badge bg-warning text-dark">Isu: '+row.isu+'</span>' : ''}
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-info mb-1" onclick='prepareEdit(${JSON.stringify(row)})'><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-sm btn-warning mb-1" onclick='prepareCopy(${JSON.stringify(row)})'><i class="fas fa-copy"></i></button>
+                        <button class="btn btn-sm btn-danger mb-1" onclick="deleteData(${row.id})"><i class="fas fa-trash"></i></button>
+                    </td>
                 `;
-                tbody.innerHTML += row;
+                tbody.appendChild(tr);
             });
         }
 
-        function editLog(item) {
-            document.getElementById('logId').value = item.id;
-            document.getElementById('tarikh').value = item.tarikh;
-            document.getElementById('jenisAktiviti').value = item.jenis_aktiviti;
-            document.getElementById('bimbingan').value = item.butiran_bimbingan;
-            document.getElementById('masaMula').value = item.masa_mula;
-            document.getElementById('masaTamat').value = item.masa_tamat;
-            document.getElementById('lokasi').value = item.lokasi;
-            document.getElementById('bilGuru').value = item.bilangan_guru;
-            document.getElementById('catatan').value = item.catatan;
-            document.getElementById('isu').value = item.isu;
-
-            // Scroll to form
-            document.getElementById('logForm').scrollIntoView({ behavior: 'smooth' });
-            
-            // Change button state
-            const btn = document.getElementById('submitBtn');
-            btn.innerHTML = '<i class="fas fa-check-circle mr-2"></i> Kemaskini Rekod';
-            btn.classList.remove('bg-blue-600');
-            btn.classList.add('bg-green-600');
+        function prepareEdit(row) {
+            document.getElementById('data-id').value = row.id;
+            fillForm(row);
+            window.scrollTo(0,0);
         }
 
-        function copyLog(item) {
-            // Fill form but keep ID empty to create new
-            resetForm(); 
-            document.getElementById('tarikh').value = item.tarikh; // Keep date or change to today? Keeping source date usually easier to adjust.
-            document.getElementById('jenisAktiviti').value = item.jenis_aktiviti;
-            document.getElementById('bimbingan').value = item.butiran_bimbingan;
-            document.getElementById('masaMula').value = item.masa_mula;
-            document.getElementById('masaTamat').value = item.masa_tamat;
-            document.getElementById('lokasi').value = item.lokasi;
-            document.getElementById('bilGuru').value = item.bilangan_guru;
-            document.getElementById('catatan').value = item.catatan;
-            
-            document.getElementById('logForm').scrollIntoView({ behavior: 'smooth' });
-            showNotification('Data disalin ke borang. Sila edit dan simpan.');
+        function prepareCopy(row) {
+            document.getElementById('data-id').value = ''; // Kosongkan ID supaya jadi rekod baru
+            fillForm(row);
+            alert("Data disalin ke borang. Sila ubah Tarikh/Masa dan tekan Simpan.");
+            window.scrollTo(0,0);
+        }
+
+        function fillForm(row) {
+            document.getElementById('input-tarikh').value = row.tarikh;
+            document.getElementById('input-masa').value = row.masa;
+            document.getElementById('input-aktiviti').value = row.jenis_aktiviti;
+            document.getElementById('input-bimbingan').value = row.jenis_bimbingan;
+            document.getElementById('input-lokasi').value = row.lokasi;
+            document.getElementById('input-bil-guru').value = row.bil_guru;
+            document.getElementById('input-catatan').value = row.catatan;
+            document.getElementById('input-isu').value = row.isu || '';
         }
 
         function resetForm() {
-            document.getElementById('logForm').reset();
-            document.getElementById('logId').value = '';
-            setDefaultDate();
-            
-            const btn = document.getElementById('submitBtn');
-            btn.innerHTML = '<i class="fas fa-save mr-2"></i> Simpan Rekod';
-            btn.classList.add('bg-blue-600');
-            btn.classList.remove('bg-green-600');
-        }
-
-        function exportToExcel() {
-            const table = document.querySelector("table");
-            // Clone table to remove "Tindakan" column for export
-            const clone = table.cloneNode(true);
-            const rows = clone.querySelectorAll('tr');
-            rows.forEach(row => {
-                if(row.cells.length > 0) row.deleteCell(-1); // Remove last cell (Actions)
-                if(row.cells.length > 0 && row.tagName === 'TH') row.deleteCell(-1); // Remove last header
-            });
-
-            const wb = XLSX.utils.table_to_book(clone, {sheet: "Log Aktiviti"});
-            const fileName = `Log_USTP_${document.getElementById('filterMonth').value || 'All'}_${document.getElementById('filterYear').value}.xlsx`;
-            XLSX.writeFile(wb, fileName);
-        }
-
-        // Utilities
-        function initYearDropdown() {
-            const yearSelect = document.getElementById('filterYear');
-            const currentYear = new Date().getFullYear();
-            yearSelect.innerHTML = ''; // Clear existing
-            
-            // Generate last 3 years (e.g., 2026, 2025, 2024)
-            for (let i = currentYear; i >= currentYear - 2; i--) {
-                const opt = document.createElement('option');
-                opt.value = i;
-                opt.innerText = i;
-                yearSelect.appendChild(opt);
-            }
-        }
-
-        function setDefaultDate() {
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('tarikh').value = today;
-            
-            // Set Filters to current month/year
-            const currentYear = new Date().getFullYear();
-            const currentMonth = (new Date().getMonth() + 1).toString().padStart(2, '0');
-            
-            document.getElementById('filterYear').value = currentYear;
-            document.getElementById('filterMonth').value = currentMonth;
+            document.getElementById('data-id').value = '';
+            document.getElementById('input-tarikh').value = '';
+            document.getElementById('input-masa').value = '';
+            document.getElementById('input-lokasi').value = '';
+            document.getElementById('input-bil-guru').value = '0';
+            document.getElementById('input-catatan').value = '';
+            document.getElementById('input-isu').value = '';
         }
 
         function formatDate(dateStr) {
-            const options = { year: 'numeric', month: 'long', day: 'numeric' };
-            return new Date(dateStr).toLocaleDateString('ms-MY', options);
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('ms-MY');
         }
 
-        function formatTime(timeStr) {
-            if (!timeStr) return '';
-            // Handle HH:mm:ss to HH:mm am/pm
-            const [hours, minutes] = timeStr.split(':');
-            const h = parseInt(hours);
-            const ampm = h >= 12 ? 'PM' : 'AM';
-            const h12 = h % 12 || 12;
-            return `${h12}:${minutes} ${ampm}`;
+        function showLoading(isLoading) {
+            document.getElementById('loading').style.display = isLoading ? 'block' : 'none';
         }
 
-        function showNotification(msg) {
-            // Simple alert/toast logic could go here
-            // For now, using browser alert is reliable
-            // Or create a temporary div
-            alert(msg);
+        // --- FUNGSI EKSPORT ---
+        
+        function exportExcel() {
+            const table = document.getElementById("dataTable");
+            // Buang column 'Tindakan' sebelum export sementara
+            const originalHTML = table.innerHTML;
+            
+            // Clone table untuk manipulasi (remove last column)
+            // Cara mudah: Guna library XLSX table_to_book terus tapi kita nak buang column last
+            const wb = XLSX.utils.table_to_book(table, {sheet: "Rekod"});
+            XLSX.writeFile(wb, "Rekod_Aktiviti_USTP.xlsx");
+        }
+
+        async function exportPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            doc.text("Laporan Aktiviti USTP", 14, 15);
+            doc.autoTable({ html: '#dataTable', startY: 20, columns: [0,1,2,3,4,5] }); // Columns 0-5 sahaja
+            doc.save("Laporan_USTP.pdf");
         }
 
     </script>
